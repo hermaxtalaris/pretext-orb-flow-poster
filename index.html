@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Greek Figures Around the Void — Pretext Static Study</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@300;400&family=IBM+Plex+Mono:wght@400&display=swap" rel="stylesheet">
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #0e130e;
+      font-family: "IBM Plex Serif", Georgia, serif;
+    }
+    canvas {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      display: block;
+      background: #0e130e;
+      cursor: crosshair;
+    }
+    .access { position: fixed; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+  </style>
+</head>
+<body>
+  <canvas id="c" aria-label="Pretext recreation of Greek figures surrounding a black void in washed faded green static."></canvas>
+  <p class="access">Press E to export PNG. Move pointer to disturb the static field.</p>
+
+  <script type="module">
+    import { prepareWithSegments, layoutNextLineRange, materializeLineRange } from "https://esm.sh/@chenglou/pretext@0.0.6";
+
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d', { alpha: false });
+
+    const baseText = `
+      Λόγος written under signal weather. The field is a ritual surface: script, ash, checksum, damaged vellum, green phosphor afterimage, protocol soot. Each sentence is smaller than authority expects. Each line keeps routing through static. The figures return as notation, not bodies: robe, beard, hand, column, smoke, proof, witness, void.
+
+      In the washed channel: κλειδί, μνήμη, σιωπή, polis, daemon, relay, salt, shard, dead drop, receipt, proof, null route, redaction, checksum, votive packet, private fire. Ancient letters flatten beside terminal fragments until neither seems old or new. The page behaves like a recovered transmission from a monastery of machines.
+
+      Around the black aperture the scribes gather. One gestures. One kneels. One appears only as a pale relief behind the signal. Their robes are made of tiny clauses. Their faces are made of repeated lambda and omega marks. A pale green cast leaks across them like oxidized copper, old CRT glass, algae on marble, a faint mineral light behind the black.
+
+      ΣΤΟΑ // 0x7f // Ω // zk-proof // mixnet // inscription // Λ // private key ceremony // Θ // checksum hymn // Π // onion route // archive fever // Ψ // ash protocol // dead-letter polis // silence compiled as defense.
+    `.replace(/\s+/g, ' ').trim();
+
+    const figureScript = 'ΛΟΓΟΣ μνήμη κλειδί σιωπή στοά polis daemon relay checksum PGP zk proof ash signal void oracle witness robe hand beard frieze '; 
+    const glyphPool = 'ΛΩΨΣΠΔΘΞκλειδίμνήμηστοαpolisdaemonrelay0x7fzkproofmixnetPGPchecksumdeadropnullroutearchivecipherashsignalstaticnoisevoid';
+    let W = 0, H = 0, DPR = 1, prepared, figurePrepared, fontSize = 9, lineHeight = 12;
+    let pointer = { x: .5, y: .5, tx: .5, ty: .5, pulse: 0 };
+    let start = performance.now();
+
+    function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+    function smoothstep(a, b, x) { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); }
+
+    function makeCorpus() {
+      const fragments = [];
+      for (let i = 0; i < 18; i++) fragments.push(baseText);
+      return fragments.join(' · ');
+    }
+
+    function resize() {
+      DPR = Math.min(2, window.devicePixelRatio || 1);
+      W = Math.floor(innerWidth);
+      H = Math.floor(innerHeight);
+      canvas.width = Math.floor(W * DPR);
+      canvas.height = Math.floor(H * DPR);
+      canvas.style.width = W + 'px';
+      canvas.style.height = H + 'px';
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      fontSize = Math.max(5.6, Math.min(8.3, W / 238));
+      lineHeight = fontSize * 1.25;
+      prepared = prepareWithSegments(makeCorpus(), `300 ${fontSize}px "IBM Plex Serif", Georgia, serif`);
+      figurePrepared = prepareWithSegments((figureScript.repeat(64)).trim(), `300 ${Math.max(4.7, fontSize*.82)}px "IBM Plex Serif", Georgia, serif`);
+    }
+
+    function voidGeometry(t) {
+      pointer.x += (pointer.tx - pointer.x) * .075;
+      pointer.y += (pointer.ty - pointer.y) * .075;
+      pointer.pulse *= .93;
+      const px = pointer.x * W, py = pointer.y * H;
+      const cx = W * .5 + Math.sin(t*.00012) * W*.008;
+      const cy = H * .495 + Math.cos(t*.00010) * H*.006;
+      const dist = Math.hypot(px - cx, py - cy);
+      const reactive = smoothstep(Math.min(W,H)*.40, 0, dist);
+      const r = Math.min(W,H) * (.082 + reactive*.008 + pointer.pulse*.012);
+      return { cx, cy, r, reactive, px, py };
+    }
+
+    function drawWashedGround(t) {
+      const g = ctx.createRadialGradient(W*.50, H*.47, 0, W*.5, H*.5, Math.max(W,H)*.82);
+      g.addColorStop(0, '#2a3429');
+      g.addColorStop(.42, '#1c251d');
+      g.addColorStop(.78, '#121812');
+      g.addColorStop(1, '#090e0a');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      const wash = ctx.createLinearGradient(0, 0, W, H);
+      wash.addColorStop(0, 'rgba(112,139,105,.060)');
+      wash.addColorStop(.35, 'rgba(155,174,139,.105)');
+      wash.addColorStop(.7, 'rgba(73,100,76,.070)');
+      wash.addColorStop(1, 'rgba(183,190,151,.050)');
+      ctx.fillStyle = wash;
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+
+      ctx.save();
+      ctx.globalAlpha = .16;
+      ctx.fillStyle = '#6e7d66';
+      ctx.fillRect(W*.045, H*.055, W*.91, H*.89);
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.globalAlpha = .51;
+      ctx.fillStyle = '#172017';
+      ctx.fillRect(W*.055, H*.067, W*.89, H*.866);
+      ctx.restore();
+
+      ctx.save();
+      ctx.globalAlpha = .085;
+      ctx.strokeStyle = '#b7b99d';
+      ctx.lineWidth = 1;
+      for (let x = W*.07; x <= W*.93; x += W*.055) {
+        ctx.beginPath(); ctx.moveTo(x, H*.07); ctx.lineTo(x + Math.sin(x*.03+t*.0002)*2, H*.93); ctx.stroke();
+      }
+      for (let y = H*.08; y <= H*.92; y += H*.055) {
+        ctx.beginPath(); ctx.moveTo(W*.06, y); ctx.lineTo(W*.94, y + Math.sin(y*.05+t*.0002)*1.5); ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawScriptField(t, vg) {
+      const marginX = Math.max(26, W * .045);
+      const top = Math.max(34, H * .06);
+      const bottom = H - Math.max(34, H * .055);
+      const colGap = Math.max(16, W * .018);
+      const cols = W > 1100 ? 4 : W > 760 ? 3 : 2;
+      const colW = (W - marginX*2 - colGap*(cols-1)) / cols;
+      ctx.font = `300 ${fontSize}px "IBM Plex Serif", Georgia, serif`;
+      ctx.textBaseline = 'alphabetic';
+      ctx.textAlign = 'left';
+
+      let cursor = { segmentIndex: 0, graphemeIndex: 0 };
+      let lineNo = 0;
+      for (let c = 0; c < cols; c++) {
+        const x0 = marginX + c * (colW + colGap);
+        for (let y = top; y < bottom; y += lineHeight) {
+          const range = layoutNextLineRange(prepared, cursor, colW);
+          if (!range) return;
+          const line = materializeLineRange(prepared, range);
+          cursor = range.end;
+          const dVoid = Math.hypot((x0 + colW*.5) - vg.cx, y - vg.cy);
+          const voidFade = 1 - smoothstep(vg.r*1.15, vg.r*2.8, dVoid);
+          const d = Math.hypot(pointer.x*W - (x0 + colW*.5), pointer.y*H - y);
+          const disturb = smoothstep(Math.min(W,H)*.34, 0, d);
+          const jitter = Math.sin(t*.003 + y*.21 + c*4.1) * (0.35 + disturb*1.6);
+          const tear = Math.sin(y*.083 + t*.0017 + c) > .988 ? Math.random() * 15 : 0;
+          const fade = (.25 + .17 * smoothstep(H*.56, 0, Math.abs(y - H*.5))) * (1 - voidFade*.92);
+          const greenLift = 18 + Math.floor(disturb * 18);
+          ctx.fillStyle = `rgba(${145+greenLift}, ${168+greenLift}, ${137+Math.floor(disturb*10)}, ${fade + .035 + disturb*.08})`;
+          ctx.fillText(line.text, x0 + jitter + tear, y);
+          if ((lineNo + c) % 17 === 0) {
+            ctx.save();
+            ctx.font = `400 ${fontSize*.78}px "IBM Plex Mono", ui-monospace, monospace`;
+            ctx.fillStyle = `rgba(176,185,151,${(.14 + disturb*.07) * (1 - voidFade*.88)})`;
+            const tag = ['0x', 'Λ', 'null', 'zk', 'Σ', 'relay', 'ash', 'Π'][lineNo % 8];
+            ctx.fillText(tag, x0 + colW - fontSize*5, y - lineHeight*.35);
+            ctx.restore();
+          }
+          lineNo++;
+        }
+      }
+    }
+
+    function drawTextRobeShape(cx, baseY, s, flip, alpha, pose, t) {
+      ctx.save();
+      ctx.translate(cx, baseY);
+      ctx.scale(flip*s, s);
+      ctx.font = `300 ${Math.max(4.7, fontSize*.82)}px "IBM Plex Serif", Georgia, serif`;
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'center';
+      let cursor = { segmentIndex: 0, graphemeIndex: 0 };
+      const rows = pose === 'seated' ? 34 : 52;
+      for (let j = 0; j < rows; j++) {
+        const y = pose === 'seated' ? -92 + j*5.0 : -205 + j*5.2;
+        const bodyT = j / (rows-1);
+        let half = pose === 'seated'
+          ? 9 + Math.sin(bodyT*Math.PI)*36 + bodyT*28
+          : 7 + Math.sin(bodyT*Math.PI)*28 + bodyT*18;
+        if (pose === 'rear') half *= .78;
+        const maxWidth = Math.max(18, half*2);
+        const range = layoutNextLineRange(figurePrepared, cursor, maxWidth);
+        if (!range) break;
+        const line = materializeLineRange(figurePrepared, range);
+        cursor = range.end;
+        const wave = Math.sin(j*.7 + t*.0012) * 1.2;
+        ctx.fillStyle = `rgba(185,174,137,${alpha * (.48 + bodyT*.34)})`;
+        ctx.fillText(line.text, wave, y);
+      }
+
+      // Pretext contour lines and classical gestures.
+      ctx.strokeStyle = `rgba(203,190,146,${alpha*.96})`;
+      ctx.lineWidth = 1.18 / s;
+      ctx.beginPath();
+      if (pose === 'seated') {
+        ctx.ellipse(0, -116, 10, 13, 0, 0, Math.PI*2);
+        ctx.moveTo(-16, -96); ctx.quadraticCurveTo(-46, -58, -62, -7);
+        ctx.moveTo(16, -94); ctx.quadraticCurveTo(46, -62, 67, -12);
+        ctx.moveTo(-44, -36); ctx.quadraticCurveTo(0, -8, 76, -4);
+      } else {
+        ctx.ellipse(0, -225, 10, 14, 0, 0, Math.PI*2);
+        ctx.moveTo(-18, -204); ctx.quadraticCurveTo(-46, -118, -34, 8);
+        ctx.moveTo(18, -204); ctx.quadraticCurveTo(46, -118, 34, 8);
+        ctx.moveTo(-27, -176); ctx.quadraticCurveTo(0, -148, 28, -176);
+      }
+      ctx.stroke();
+
+      // profile nose, beard, hair cap, and robe folds: more Greek vase/fresco identity.
+      ctx.strokeStyle = `rgba(206,191,145,${alpha*.78})`;
+      ctx.lineWidth = .82 / s;
+      ctx.beginPath();
+      const headY = pose === 'seated' ? -116 : -225;
+      ctx.moveTo(0, headY - 14); ctx.quadraticCurveTo(13, headY - 11, 11, headY + 2); ctx.lineTo(20, headY + 6);
+      ctx.moveTo(7, headY + 10); ctx.quadraticCurveTo(17, headY + 22, 3, headY + 29);
+      ctx.moveTo(-10, headY - 8); ctx.quadraticCurveTo(0, headY - 24, 13, headY - 9);
+      const foldTop = pose === 'seated' ? -88 : -190;
+      const foldBottom = pose === 'seated' ? -8 : 4;
+      for (let k = -3; k <= 3; k++) {
+        const x = k * (pose === 'seated' ? 10 : 8);
+        ctx.moveTo(x, foldTop);
+        ctx.bezierCurveTo(x-12, foldTop+34, x+12, foldBottom-36, x + k*2, foldBottom);
+      }
+      ctx.stroke();
+
+      ctx.strokeStyle = `rgba(165,194,144,${alpha*.72})`;
+      ctx.lineWidth = .95 / s;
+      ctx.beginPath();
+      if (pose === 'right') {
+        ctx.moveTo(-18, -156); ctx.quadraticCurveTo(-72, -132, -98, -111);
+        ctx.moveTo(-98, -111); ctx.lineTo(-109, -116); ctx.moveTo(-98, -111); ctx.lineTo(-109, -106);
+        ctx.moveTo(18, -153); ctx.quadraticCurveTo(42, -128, 62, -132);
+      } else if (pose === 'left') {
+        ctx.moveTo(18, -156); ctx.quadraticCurveTo(72, -132, 98, -111);
+        ctx.moveTo(98, -111); ctx.lineTo(109, -116); ctx.moveTo(98, -111); ctx.lineTo(109, -106);
+        ctx.moveTo(-18, -153); ctx.quadraticCurveTo(-42, -128, -62, -132);
+      } else if (pose === 'seated') {
+        ctx.moveTo(20, -86); ctx.quadraticCurveTo(63, -75, 96, -92);
+        ctx.moveTo(96, -92); ctx.lineTo(106, -96); ctx.moveTo(96, -92); ctx.lineTo(104, -86);
+      }
+      ctx.stroke();
+
+      // tiny head/hand glyph clusters.
+      ctx.font = `400 ${Math.max(5.2, fontSize*.95)}px "IBM Plex Mono", ui-monospace, monospace`;
+      ctx.fillStyle = `rgba(206,191,145,${alpha*.84})`;
+      ctx.fillText('Ω', 0, pose === 'seated' ? -116 : -225);
+      ctx.restore();
+    }
+
+    function drawPretextGreekFigures(t, vg) {
+      const s = Math.min(W,H) / 720;
+      const ground = H*.84;
+      // Rear reliefs first, ghostlike.
+      drawTextRobeShape(W*.455, H*.72, s*.74, 1, .42, 'rear', t);
+      drawTextRobeShape(W*.575, H*.735, s*.82, -1, .40, 'rear', t);
+      // Main figures surrounding void, made from tiny text lines.
+      drawTextRobeShape(W*.285, ground, s*.88, 1, .78, 'left', t);
+      drawTextRobeShape(W*.355, ground, s*.99, 1, .90, 'left', t);
+      drawTextRobeShape(W*.430, H*.82, s*.92, 1, .92, 'seated', t);
+      drawTextRobeShape(W*.640, ground, s*1.05, -1, .92, 'right', t);
+      drawTextRobeShape(W*.720, ground, s*.86, -1, .76, 'right', t);
+      // Baseline frieze below figures.
+      ctx.save();
+      ctx.font = `300 ${Math.max(5.2, fontSize*.86)}px "IBM Plex Mono", ui-monospace, monospace`;
+      ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(166,185,145,.155)';
+      ctx.fillText('ΛΟΓΟΣ / ΜΝΗΜΗ / VOID / PGP / ΣΤΟΑ / zk / STATIC', W/2, H*.905);
+      ctx.restore();
+    }
+
+    function drawVoid(t, vg) {
+      ctx.save();
+      const halo = ctx.createRadialGradient(vg.cx, vg.cy, vg.r*.25, vg.cx, vg.cy, vg.r*3.15);
+      halo.addColorStop(0, `rgba(199,224,171,${.36 + vg.reactive*.08})`);
+      halo.addColorStop(.24, `rgba(126,158,108,${.20 + vg.reactive*.05})`);
+      halo.addColorStop(.72, 'rgba(60,82,56,.035)');
+      halo.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = halo;
+      ctx.beginPath(); ctx.arc(vg.cx, vg.cy, vg.r*3.15, 0, Math.PI*2); ctx.fill();
+
+      // smoke/signal wisps above the void.
+      ctx.strokeStyle = `rgba(176,199,151,${.15 + vg.reactive*.05})`;
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 11; i++) {
+        const a = -Math.PI/2 + (i-5)*.09;
+        const sx = vg.cx + Math.cos(a)*vg.r*.45;
+        const sy = vg.cy + Math.sin(a)*vg.r*.35;
+        ctx.beginPath();
+        ctx.moveTo(sx, sy);
+        ctx.bezierCurveTo(sx + Math.sin(i)*28, sy - vg.r*.9, sx + Math.cos(i*1.7)*44, sy - vg.r*1.9, sx + Math.sin(t*.0008+i)*58, sy - vg.r*2.9);
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = '#020402';
+      ctx.beginPath(); ctx.arc(vg.cx, vg.cy, vg.r, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle = `rgba(181,198,157,${.34 + vg.reactive*.10})`;
+      ctx.beginPath(); ctx.arc(vg.cx, vg.cy, vg.r + .7, 0, Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(vg.cx, vg.cy, vg.r*1.23, 0, Math.PI*2); ctx.stroke();
+      // Black surface dust.
+      ctx.save();
+      ctx.beginPath(); ctx.arc(vg.cx, vg.cy, vg.r*.96, 0, Math.PI*2); ctx.clip();
+      for (let i = 0; i < 380; i++) {
+        const a = i*2.399963;
+        const rr = vg.r * Math.sqrt(((Math.sin(i*19.7+t*.001)+1)*.5));
+        const x = vg.cx + Math.cos(a)*rr;
+        const y = vg.cy + Math.sin(a)*rr;
+        ctx.fillStyle = `rgba(80,98,78,${.045 + (i%7)*.006})`;
+        ctx.fillRect(x, y, 1, 1);
+      }
+      ctx.restore();
+      ctx.restore();
+    }
+
+    function drawMicroGlyphDust(t) {
+      ctx.save();
+      ctx.font = `400 ${Math.max(4.2, fontSize*.70)}px "IBM Plex Mono", ui-monospace, monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      for (let i = 0; i < 1150; i++) {
+        const n1 = Math.sin(i*12.9898 + t*.00033) * 43758.5453;
+        const n2 = Math.sin(i*78.233 + t*.00021) * 24634.6345;
+        const x = (n1 - Math.floor(n1)) * W;
+        const y = (n2 - Math.floor(n2)) * H;
+        const ch = glyphPool[(i * 7 + Math.floor(t*.0008)) % glyphPool.length];
+        const band = .5 + .5 * Math.sin(y*.047 + t*.002);
+        ctx.fillStyle = `rgba(170,190,150,${.028 + band*.058})`;
+        ctx.fillText(ch, x, y);
+      }
+      ctx.restore();
+    }
+
+    function drawStaticAndNoise(t) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      for (let i = 0; i < 12500; i++) {
+        const n1 = Math.sin(i*91.17 + t*.0061) * 43758.5453;
+        const n2 = Math.sin(i*17.31 + t*.0047) * 24634.6345;
+        const x = (n1 - Math.floor(n1)) * W;
+        const y = (n2 - Math.floor(n2)) * H;
+        const hot = (Math.sin(i*3.7 + t*.021) + 1) * .5;
+        ctx.fillStyle = hot > .72 ? `rgba(178,205,161,${.035 + hot*.095})` : `rgba(84,112,82,${.018 + hot*.035})`;
+        ctx.fillRect(x, y, hot > .985 ? 2 : 1, 1);
+      }
+      ctx.restore();
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      for (let i = 0; i < 64; i++) {
+        const y = ((i * 41.7 + t*.023 + Math.sin(i*9.2)*80) % (H+80)) - 40;
+        const a = .016 + .032 * ((Math.sin(i*2.13+t*.004)+1)*.5);
+        ctx.fillStyle = `rgba(168,197,151,${a})`;
+        ctx.fillRect(0, y, W, i % 9 === 0 ? 2 : 1);
+      }
+      ctx.restore();
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = 'rgba(195,207,170,.035)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.fillStyle = 'rgba(14,22,14,.26)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+
+      ctx.save();
+      ctx.globalAlpha = .14;
+      ctx.fillStyle = '#030503';
+      for (let y = 0; y < H; y += 3) ctx.fillRect(0, y, W, 1);
+      ctx.globalAlpha = .064;
+      ctx.fillStyle = '#b6c99f';
+      for (let y = 1; y < H; y += 5) ctx.fillRect(0, y, W, 1);
+      ctx.restore();
+    }
+
+    function drawBleedAndVignette() {
+      ctx.save();
+      const vg = ctx.createRadialGradient(W/2, H/2, Math.min(W,H)*.18, W/2, H/2, Math.max(W,H)*.72);
+      vg.addColorStop(0, 'rgba(255,255,255,0)');
+      vg.addColorStop(.74, 'rgba(0,0,0,.16)');
+      vg.addColorStop(1, 'rgba(0,0,0,.58)');
+      ctx.fillStyle = vg;
+      ctx.fillRect(0,0,W,H);
+      ctx.globalAlpha = .12;
+      ctx.strokeStyle = '#879879';
+      ctx.strokeRect(W*.045+.5, H*.055+.5, W*.91-1, H*.89-1);
+      ctx.restore();
+    }
+
+    function frame(now) {
+      const t = now - start;
+      const vg = voidGeometry(t);
+      drawWashedGround(t);
+      drawScriptField(t, vg);
+      drawPretextGreekFigures(t, vg);
+      drawVoid(t, vg);
+      drawMicroGlyphDust(t);
+      drawStaticAndNoise(t);
+      drawBleedAndVignette();
+      requestAnimationFrame(frame);
+    }
+
+    function exportPng() {
+      const a = document.createElement('a');
+      a.download = 'pretext-greek-figures-around-void.png';
+      a.href = canvas.toDataURL('image/png');
+      a.click();
+    }
+
+    addEventListener('resize', resize);
+    addEventListener('pointermove', e => {
+      pointer.tx = e.clientX / Math.max(1, W);
+      pointer.ty = e.clientY / Math.max(1, H);
+    });
+    addEventListener('pointerdown', () => { pointer.pulse = 1; });
+    addEventListener('keydown', e => { if (e.key.toLowerCase() === 'e') exportPng(); });
+
+    resize();
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>
