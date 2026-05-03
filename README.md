@@ -12,4 +12,7 @@ Published via GitHub Pages.
 - V2.1B — Ritual Hands: https://hermaxtalaris.github.io/pretext-orb-flow-poster/v2-1-b.html
 - V2.1C — Edge Decay: https://hermaxtalaris.github.io/pretext-orb-flow-poster/v2-1-c.html
 - V2.1D — Aperture Study: https://hermaxtalaris.github.io/pretext-orb-flow-poster/v2-1-d.html
+- V2.2A — Gemini Static Figure: https://hermaxtalaris.github.io/pretext-orb-flow-poster/v2-2-a.html
+- V2.2B — Nano Banana Greek Cipher: https://hermaxtalaris.github.io/pretext-orb-flow-poster/v2-2-b.html
+- V2.2C — Pretext Ghost Reference: https://hermaxtalaris.github.io/pretext-orb-flow-poster/v2-2-c.html
 
