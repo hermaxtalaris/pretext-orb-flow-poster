@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Aether Codex V2 — Pretext Art Site</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@300;400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #d8dfc4;
+      --muted: #8e9a7f;
+      --line: rgba(216,223,196,.16);
+      --glass: rgba(8, 13, 10, .44);
+      --accent: #d7c777;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #070b08;
+      font-family: "IBM Plex Serif", Georgia, serif;
+      color: var(--ink);
+    }
+    canvas {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      display: block;
+      background: #070b08;
+      cursor: crosshair;
+    }
+    .chrome {
+      position: fixed;
+      inset: 22px;
+      pointer-events: none;
+      opacity: 1;
+      transition: opacity .4s ease;
+    }
+    body.hide-ui .chrome { opacity: 0; }
+    .topbar, .caption, .index {
+      position: absolute;
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(13,20,14,.58), rgba(6,10,7,.28));
+      box-shadow: 0 24px 80px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.04);
+      backdrop-filter: blur(14px);
+    }
+    .topbar {
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 54px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      font-size: 11px;
+      color: rgba(216,223,196,.76);
+    }
+    .brand { color: #eef4d7; }
+    .status { color: rgba(215,199,119,.86); }
+    .caption {
+      left: 0;
+      bottom: 0;
+      max-width: min(520px, calc(100vw - 44px));
+      padding: 18px 19px 17px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(28px, 4vw, 62px);
+      line-height: .91;
+      font-weight: 300;
+      letter-spacing: -.045em;
+      color: #eef4d7;
+    }
+    p {
+      margin: 0;
+      max-width: 42em;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 11px;
+      line-height: 1.55;
+      color: rgba(202,213,183,.68);
+    }
+    .index {
+      right: 0;
+      bottom: 0;
+      width: 182px;
+      padding: 14px 14px 13px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 10px;
+      line-height: 1.7;
+      color: rgba(202,213,183,.58);
+    }
+    .index b { color: rgba(238,244,215,.82); font-weight: 500; }
+    .access { position: fixed; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+    @media (max-width: 760px) {
+      .chrome { inset: 12px; }
+      .topbar { height: 46px; padding: 0 12px; }
+      .status { display: none; }
+      .caption { padding: 14px; }
+      .index { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="c" aria-label="Interactive Pretext art site with flowing script around a black aperture."></canvas>
+  <div class="chrome" aria-hidden="true">
+    <div class="topbar"><span class="brand">Aether Codex / V2</span><span class="status">live text field · hidden export</span></div>
+    <section class="caption">
+      <h1>Script weather around a private sun.</h1>
+      <p>A browser-native Pretext canvas: real prose is measured, bent, erased, and reassembled as a washed signal field. Move through it. Press H to hide this layer, E to export.</p>
+    </section>
+    <aside class="index"><b>Controls</b><br>pointer · disturb<br>click · aperture pulse<br>H · hide UI<br>E · export PNG</aside>
+  </div>
+  <p class="access">Press H to hide interface. Press E to export PNG. Move pointer to disturb the typographic field.</p>
+
+  <script type="module">
+    import { prepareWithSegments, layoutNextLineRange, materializeLineRange } from "https://esm.sh/@chenglou/pretext@0.0.6";
+
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d', { alpha: false });
+
+    const corpus = `
+      The site is not a page so much as weather: small script routed through damaged glass, field notes from a machine monastery, copper salts in the dark, private keys wrapped in vellum, a ritual aperture held open by prose. Pretext measures the sentence before it becomes image. The line knows where the void begins and chooses another path.
+
+      A signal can become architecture when it repeats with enough patience. Around the black sun: dead drops, receipts, witness marks, marginalia, checksum hymns, archive fever, green phosphor, quiet telemetry, route fragments, ash protocol, cipher gardens, omega dust, lambda rain, a marble face erased into transmission.
+
+      What remains visible is not illustration but pressure. The typography bends. The static remembers. The page breathes as if it were recovered from an instrument panel left running in a locked room below the city.
+    `.replace(/\s+/g, ' ').trim();
+
+    const marginalia = 'ΛΟΓΟΣ · μνήμη · κλειδί · checksum · dead drop · zk proof · archive · signal · static · private sun · '; 
+    const glyphs = 'ΛΩΣΠΔΘΞμνήμηκλειδίστοάcipherproofrelayarchive0x7fstaticvoidnoise';
+
+    let W = 0, H = 0, DPR = 1;
+    let prepared, microPrepared;
+    let fontSize = 10, lineHeight = 14;
+    let pointer = { x: .5, y: .52, tx: .5, ty: .52, pulse: 0 };
+    const start = performance.now();
+
+    function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+    function smoothstep(a, b, x) { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); }
+    function lerp(a, b, t) { return a + (b - a) * t; }
+
+    function resize() {
+      DPR = Math.min(2, window.devicePixelRatio || 1);
+      W = innerWidth; H = innerHeight;
+      canvas.width = Math.floor(W * DPR);
+      canvas.height = Math.floor(H * DPR);
+      canvas.style.width = W + 'px';
+      canvas.style.height = H + 'px';
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      fontSize = clamp(W / 118, 7.2, 13.2);
+      lineHeight = fontSize * 1.42;
+      prepared = prepareWithSegments((corpus + ' ').repeat(30), `300 ${fontSize}px "IBM Plex Serif", Georgia, serif`);
+      microPrepared = prepareWithSegments((marginalia).repeat(150), `400 ${Math.max(5.4, fontSize * .72)}px "IBM Plex Mono", ui-monospace, monospace`);
+    }
+
+    function aperture(t) {
+      pointer.x += (pointer.tx - pointer.x) * .08;
+      pointer.y += (pointer.ty - pointer.y) * .08;
+      pointer.pulse *= .92;
+      const cx = W * (.50 + Math.sin(t * .00009) * .025) + (pointer.x - .5) * W * .035;
+      const cy = H * (.48 + Math.cos(t * .00008) * .018) + (pointer.y - .5) * H * .025;
+      const dist = Math.hypot(pointer.x * W - cx, pointer.y * H - cy);
+      const react = smoothstep(Math.min(W,H) * .45, 0, dist);
+      const r = Math.min(W,H) * (.105 + react * .026 + pointer.pulse * .026);
+      return { cx, cy, r, react };
+    }
+
+    function drawGround(t) {
+      const g = ctx.createRadialGradient(W*.48, H*.44, 0, W*.5, H*.52, Math.max(W,H)*.85);
+      g.addColorStop(0, '#263224');
+      g.addColorStop(.42, '#151e16');
+      g.addColorStop(.76, '#0c120d');
+      g.addColorStop(1, '#050805');
+      ctx.fillStyle = g;
+      ctx.fillRect(0,0,W,H);
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      const wash = ctx.createLinearGradient(0,0,W,H);
+      wash.addColorStop(0, 'rgba(118,142,101,.06)');
+      wash.addColorStop(.52, 'rgba(211,201,124,.075)');
+      wash.addColorStop(1, 'rgba(66,93,71,.06)');
+      ctx.fillStyle = wash;
+      ctx.fillRect(0,0,W,H);
+      ctx.restore();
+
+      ctx.save();
+      ctx.globalAlpha = .105;
+      ctx.strokeStyle = '#d8dfc4';
+      ctx.lineWidth = 1;
+      const inset = Math.min(W,H) * .055;
+      ctx.strokeRect(inset, inset, W - inset*2, H - inset*2);
+      ctx.restore();
+    }
+
+    function rowSpans(y, a, t) {
+      const spans = [];
+      const wobble = Math.sin(y * .012 + t * .00045) * 12;
+      const dy = y - a.cy;
+      const band = a.r * (1.04 + Math.sin(t*.0003) * .035);
+      if (Math.abs(dy) < band) {
+        const hw = Math.sqrt(Math.max(0, band*band - dy*dy));
+        spans.push([a.cx - hw * 1.18 + wobble, a.cx + hw * 1.18 + wobble]);
+      }
+      const towerW = Math.min(W,H) * .035;
+      const towerH = H * .54;
+      for (const sx of [W*.18, W*.82]) {
+        const local = Math.abs(y - H*.49) / towerH;
+        if (local < .52) {
+          const taper = towerW * (1 - local * 1.15);
+          spans.push([sx - taper, sx + taper]);
+        }
+      }
+      return spans.sort((p,q)=>p[0]-q[0]);
+    }
+
+    function corridorsForRow(y, a, t, left, right) {
+      const spans = rowSpans(y, a, t).map(([x1,x2]) => [clamp(x1,left,right), clamp(x2,left,right)]).filter(s=>s[1]>s[0]);
+      const corridors = [];
+      let x = left;
+      for (const [x1,x2] of spans) {
+        if (x1 - x > 38) corridors.push([x, x1 - 12]);
+        x = Math.max(x, x2 + 12);
+      }
+      if (right - x > 38) corridors.push([x, right]);
+      return corridors;
+    }
+
+    function drawTextField(t, a) {
+      ctx.save();
+      ctx.font = `300 ${fontSize}px "IBM Plex Serif", Georgia, serif`;
+      ctx.textBaseline = 'alphabetic';
+      const margin = Math.max(28, Math.min(W,H) * .075);
+      const top = margin + 54;
+      const bottom = H - margin - 64;
+      let cursor = { segmentIndex: 0, graphemeIndex: 0 };
+      for (let y = top; y < bottom; y += lineHeight) {
+        const corridors = corridorsForRow(y, a, t, margin, W - margin);
+        for (const [x1,x2] of corridors) {
+          const width = x2 - x1;
+          if (width < fontSize * 8) continue;
+          const range = layoutNextLineRange(prepared, cursor, width);
+          if (!range) break;
+          const line = materializeLineRange(prepared, range);
+          const wake = Math.sin(y*.031 + t*.0013) * 5 + (pointer.x - .5) * 7;
+          const fade = .17 + .23 * smoothstep(top, H*.42, y) * (1 - smoothstep(H*.76, bottom, y));
+          ctx.fillStyle = `rgba(201, 216, 180, ${fade})`;
+          ctx.fillText(line.text, x1 + wake, y);
+          cursor = range.end;
+        }
+      }
+      ctx.restore();
+    }
+
+    function drawMicroBands(t, a) {
+      ctx.save();
+      ctx.font = `400 ${Math.max(5.4, fontSize*.72)}px "IBM Plex Mono", ui-monospace, monospace`;
+      ctx.textBaseline = 'top';
+      let cursor = { segmentIndex: 0, graphemeIndex: 0 };
+      const rows = Math.floor(H / (fontSize * 2.05));
+      for (let i = 0; i < rows; i++) {
+        const y = i * fontSize * 2.05 + Math.sin(i*.8 + t*.0008) * 2;
+        const drift = Math.sin(i*.21 + t*.0002) * W*.04;
+        const w = W * (.48 + .08 * Math.sin(i*.17));
+        const range = layoutNextLineRange(microPrepared, cursor, w);
+        if (!range) break;
+        const line = materializeLineRange(microPrepared, range);
+        const near = 1 - smoothstep(a.r*.8, a.r*2.8, Math.abs(y - a.cy));
+        ctx.fillStyle = `rgba(147, 166, 130, ${.035 + near*.05})`;
+        ctx.fillText(line.text, W*.26 + drift, y);
+        cursor = range.end;
+      }
+      ctx.restore();
+    }
+
+    function drawArchitecture(t, a) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      for (const sx of [W*.18, W*.82]) {
+        const grd = ctx.createLinearGradient(sx, H*.18, sx, H*.78);
+        grd.addColorStop(0, 'rgba(196,211,171,.02)');
+        grd.addColorStop(.5, 'rgba(196,211,171,.15)');
+        grd.addColorStop(1, 'rgba(196,211,171,.02)');
+        ctx.strokeStyle = grd;
+        ctx.lineWidth = Math.max(1, W*.0012);
+        for (let k = -3; k <= 3; k++) {
+          ctx.beginPath();
+          ctx.moveTo(sx + k*8 + Math.sin(t*.0004+k)*4, H*.20);
+          ctx.lineTo(sx + k*3 + Math.cos(t*.0003+k)*4, H*.78);
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.fillStyle = 'rgba(0,0,0,.72)';
+      ctx.beginPath();
+      ctx.arc(a.cx, a.cy, a.r*.96, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      for (let i = 0; i < 7; i++) {
+        ctx.strokeStyle = `rgba(206,216,174,${.055 - i*.005})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(a.cx, a.cy, a.r * (1.08 + i*.16 + Math.sin(t*.0004+i)*.012), 0, Math.PI*2);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawNoise(t) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      ctx.font = `400 ${Math.max(5, fontSize*.64)}px "IBM Plex Mono", monospace`;
+      for (let i = 0; i < 900; i++) {
+        const x = (Math.sin(i*19.19 + t*.0007) * 43758.5453 % 1 + 1) % 1 * W;
+        const y = (Math.sin(i*41.71 + t*.0009) * 24634.6345 % 1 + 1) % 1 * H;
+        const ch = glyphs[(i + Math.floor(t*.006)) % glyphs.length];
+        ctx.fillStyle = `rgba(196,211,171,${.018 + (i%7)*.004})`;
+        ctx.fillText(ch, x, y);
+      }
+      ctx.globalAlpha = .10;
+      ctx.fillStyle = '#d8dfc4';
+      for (let y = 0; y < H; y += 3) ctx.fillRect(0, y, W, .55);
+      ctx.restore();
+    }
+
+    function exportPng() {
+      const a = document.createElement('a');
+      a.download = `aether-codex-v2-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.png`;
+      a.href = canvas.toDataURL('image/png');
+      a.click();
+    }
+
+    function draw(now) {
+      const t = now - start;
+      const a = aperture(t);
+      drawGround(t);
+      drawMicroBands(t, a);
+      drawTextField(t, a);
+      drawArchitecture(t, a);
+      drawNoise(t);
+      requestAnimationFrame(draw);
+    }
+
+    addEventListener('resize', resize, { passive: true });
+    addEventListener('pointermove', (e) => {
+      pointer.tx = e.clientX / Math.max(1, W);
+      pointer.ty = e.clientY / Math.max(1, H);
+    }, { passive: true });
+    addEventListener('pointerdown', () => { pointer.pulse = 1; }, { passive: true });
+    addEventListener('keydown', (e) => {
+      if (e.key.toLowerCase() === 'h') document.body.classList.toggle('hide-ui');
+      if (e.key.toLowerCase() === 'e') exportPng();
+    });
+
+    resize();
+    requestAnimationFrame(draw);
+  </script>
+</body>
+</html>
